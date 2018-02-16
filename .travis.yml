@@ -10,7 +10,7 @@ jobs:
     - docker login -u=$DOCKER_USERNAME -p=$DOCKER_PASSWORD
     - docker build -t server-demo .
     - docker images
-    - docker tag travis-ci-build-stages-demo $DOCKER_USERNAME/server-demo
+    - docker tag server-demo $DOCKER_USERNAME/server-demo
     - docker push $DOCKER_USERNAME/server-demo
   - stage: test
     script:
