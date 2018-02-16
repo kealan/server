@@ -8,10 +8,14 @@ jobs:
     script:
     - make
     - docker login -u=$DOCKER_USERNAME -p=$DOCKER_PASSWORD
-    - docker build -t travis-ci-build-stages-demo .
+    - docker build -t server-demo .
     - docker images
-    - docker tag travis-ci-build-stages-demo $DOCKER_USERNAME/travis-ci-build-stages-demo
-    - docker push $DOCKER_USERNAME/travis-ci-build-stages-demo
+    - docker tag travis-ci-build-stages-demo $DOCKER_USERNAME/server-demo
+    - docker push $DOCKER_USERNAME/server-demo
   - stage: test
-    script: 
-    - docker run --rm -p 8001:8000 $DOCKER_USERNAME/travis-ci-build-stages-demo 
+    script:
+    - docker run --rm -p 8001:8000 $DOCKER_USERNAME/server-demo
+env:
+  global:
+  - secure: EVxn9Hvj+CdmuYkSOWuOU1w45xq801HCa0IUj2Y+XbrdZILXtXatWDuYBvXduFXBBNMOIkoqJf6/cPw5ZsBH4x9h354WkFlWj3/ffvW0BKBwLFXyKHnbt9VOxY/ZpuewiHVJ6YUXTQz5IcsyKroWluJeSU+1di+rWXT/X+6zW6WBo/iK7LrvHXuWElZDTEU5JpfPYeEZVean9Ujzl53oWMZOJArJOXo8OX5pC2jzZixjtEJGLh4WmupcqIGepXEWuShOZ3DgGQ9Wmk68wyalNSD37h9SoV48bC9y0efNWRJ2zbeg6a0/JGcrwb8g3wyyeMzXcCAD1T6Fd45jurjZgF0Oa1Qtfvnf1yJBW8whMkghOJD9PpGT2P8LqhDRAk6pvYYx1VCwdFAi5sSYGKuLvLJClj/5DdQYIZDZcitO2+QhijmUl5bPVq9CAOX4H5srzS9heG9Z1WM2sBAiwAMelHa5mg08TCiJdP2yDRAM6e9hqb28ZP8u4Xr0I91Rlsz/SZEo6Y6IlHLmxKdMlihqlaUNjq69nldmvV+8f/lbcpcexFiuZ9ECJQUnV6pjAUvg4f0no9l2rXyt02gYjhlhrU8sSC8fUhOln6x+G+YGUdBcFK9yIpuvIcR+a4dlAM4lzKknE7UyYpYspo9Myz3Z4dfZz5dFim5jTEgqq/yOpVw=
+  - secure: KNulWRi1PQMt76Z1FcbWPHwj6k9QMT/dIQ/9geDrFy7wq8ilnqrUz81E/988ttLe5p8Dyidr/dKjRAi16mjGHJjj7s8yoIhTAuC/72/YXzPic0ndcJvVP2N19DqXdKd7v19wY5kvHvD9En8lRWO+kH3rlgccxvKq52Wx3x8CDdybWWEFtsdeLIJTowQK2fR/tBmUO9jUbDNwUMTYPebt/tBe/siihYOMIus6E9wgZjGnxp/P5wqfD7lL3ZO9Dh0nfb6O8afdV0QRcYdzL9HQRXi30CW6oJfslw5gSYgO06XgxJljXZb/vQGvWL8EBBP/h6aChqKX9N3DARrwVoxy/+d+8CMo3MAC/EQp/36u5saOLuU1LJnbkh9KgVRQNTAF1v/ZA9xwQDW65lhaebH0mxfk4ahP//1jGqDiisNqEOAZdivmOsKOh0Qm1SCX/x0vCcjL4vYVinKe4QO2vbivx/90hSIT3kzgMJM9Lym3e7N8Q1U2CaH1Y7iE9ffY1LglMzzQaQmxs9LoeuJI+bHmGlmOyNyJNoYeGaHilR6QDwJL0ISGbX85vniau4iG7qzxzPJKNSyZSdGNowUcKAvxFiaQ5MrfPOvNp5PN8s15AMgaDeYVHPGWahEEgF++/VasSa3BjBXYcU4Iw6W6o4eS2WqucmGpn08A/L7R5/RFd2I=
