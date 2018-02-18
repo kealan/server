@@ -148,6 +148,8 @@ void doprocessing (int sock)
 {
     int n1 = 1;
     int n2 = 0;
+    int len = 0;
+    char* server ="test";
     while (n1 > 0)
     {
         char buf[MAXDATASIZE];
@@ -161,12 +163,16 @@ void doprocessing (int sock)
 
         printf("num bytes received %d\n", n1);
         printf("server received %s\n", buf);
+
+        bzero(buf,MAXDATASIZE);
+        (void)sprintf(buf,"HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\nConnection: close\nContent-Type: application/json\n\n", server, len); /* Header + a blank line */
+
         if ( (n2 = send(sock, buf, n1, 0)) == -1)
         {
             perror("send");
             close(sock);
             exit(1);
         }
-        printf("num bytes sent %d\nx", n2);
+        printf("num bytes sent %d\n", n2);
     }
 }

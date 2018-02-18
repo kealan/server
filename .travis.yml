@@ -14,7 +14,7 @@ jobs:
     - docker push $DOCKER_USERNAME/server-demo
   - stage: test
     script:
-    - docker run -it -p 8001:8000 $DOCKER_USERNAME/server-demo
+    - test.sh
 env:
   global:
   - secure: EVxn9Hvj+CdmuYkSOWuOU1w45xq801HCa0IUj2Y+XbrdZILXtXatWDuYBvXduFXBBNMOIkoqJf6/cPw5ZsBH4x9h354WkFlWj3/ffvW0BKBwLFXyKHnbt9VOxY/ZpuewiHVJ6YUXTQz5IcsyKroWluJeSU+1di+rWXT/X+6zW6WBo/iK7LrvHXuWElZDTEU5JpfPYeEZVean9Ujzl53oWMZOJArJOXo8OX5pC2jzZixjtEJGLh4WmupcqIGepXEWuShOZ3DgGQ9Wmk68wyalNSD37h9SoV48bC9y0efNWRJ2zbeg6a0/JGcrwb8g3wyyeMzXcCAD1T6Fd45jurjZgF0Oa1Qtfvnf1yJBW8whMkghOJD9PpGT2P8LqhDRAk6pvYYx1VCwdFAi5sSYGKuLvLJClj/5DdQYIZDZcitO2+QhijmUl5bPVq9CAOX4H5srzS9heG9Z1WM2sBAiwAMelHa5mg08TCiJdP2yDRAM6e9hqb28ZP8u4Xr0I91Rlsz/SZEo6Y6IlHLmxKdMlihqlaUNjq69nldmvV+8f/lbcpcexFiuZ9ECJQUnV6pjAUvg4f0no9l2rXyt02gYjhlhrU8sSC8fUhOln6x+G+YGUdBcFK9yIpuvIcR+a4dlAM4lzKknE7UyYpYspo9Myz3Z4dfZz5dFim5jTEgqq/yOpVw=
