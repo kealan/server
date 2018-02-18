@@ -6,4 +6,4 @@
 
 FROM scratch
 ADD main /
-CMD ["nohup /main &"]
+CMD ["/main &"]
