@@ -22,6 +22,18 @@ docker-compose down
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
     echo "TEST PASSED"
-    exit 0
+else 
+    echo "TEST FAILED"
+    exit 1
 fi
+
+grep "HTTP/1.1 200 KO" ./response.txt
+if [ $? = 0 ]; then
+    echo "TEST PASSED"
+else 
+    echo "TEST FAILED"
+    exit 1
+fi
+
+exit 0
 
