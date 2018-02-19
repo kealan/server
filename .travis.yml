@@ -2,6 +2,9 @@ language: c
 compiler: gcc
 sudo: true
 dist: trusty
+services:
+  - docker
+
 jobs:
   include:
   - stage: build docker image
@@ -14,6 +17,7 @@ jobs:
     - docker push $DOCKER_USERNAME/server-demo
   - stage: test
     script:
+    - docker-compose --version
     - ./test.sh
 env:
   global:

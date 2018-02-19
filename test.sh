@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# dockerbuild.sh
+# test.sh
 #
 # Test the server
 #
@@ -8,17 +8,16 @@
 # -----------------------------------------------------------------------------
 
 # NOTES:
-# This script requires Docker
 
-exit 0;
-
-echo "start service"
-docker run -it -p 8001:8000 $DOCKER_USERNAME/server-demo 
-
-echo "make client request"
+#echo "make client request"
+# curl -H "Content-Type: application/json" http://localhost:8001/status  --trace-ascii /dev/stdout
+cd ./test
+docker-compose up --build &
 sleep 200
-curl -H "Content-Type: application/json" http://localhost:8001/status  --trace-ascii /dev/stdout
+grep "HTTP/1.1 200 OK" ./request/test.txt
+if [[ "$?" = 0 ]]; then
+    echo "TEST PASSED"
+    docker-compose down
+    exit 0
+fi
 
-# Stop amd remove all containers;
-docker stop $(docker ps -a -q)
-docker rm $(docker ps -a -q)

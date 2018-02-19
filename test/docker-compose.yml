@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+
+  server-demo:
+    image: "kealan/server-demo:latest"
+    container_name: "server-demo"
+    hostname: "server-demo"
+    ports:
+      - "8001:8000"
+    # command: "-server -bootstrap-expect 1"
+
+  request:
+    build: ./request
+    container_name: "request"
+    volumes:
+      - ./request:/tmp
+    depends_on:
+      - server-demo
+
+
