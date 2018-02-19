@@ -13,11 +13,13 @@
 # curl -H "Content-Type: application/json" http://localhost:8001/status  --trace-ascii /dev/stdout
 cd ./test
 docker-compose up --build &
-sleep 200
-grep "HTTP/1.1 200 OK" ./request/test.txt
-if [[ "$?" = 0 ]]; then
+sleep 60
+docker-compose  logs request > response.txt
+more response.txt
+docker-compose down
+grep "HTTP/1.1 200 OK" ./response.txt
+if [ $? = 0 ]; then
     echo "TEST PASSED"
-    docker-compose down
     exit 0
 fi
 

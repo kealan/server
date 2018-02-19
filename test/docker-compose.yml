@@ -13,8 +13,6 @@ services:
   request:
     build: ./request
     container_name: "request"
-    volumes:
-      - ./request:/tmp
     depends_on:
       - server-demo
 
