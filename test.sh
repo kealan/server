@@ -10,6 +10,8 @@
 # NOTES:
 # This script requires Docker
 
+exit 0;
+
 echo "start service"
 docker run -it -p 8001:8000 $DOCKER_USERNAME/server-demo 
 
