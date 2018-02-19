@@ -13,7 +13,9 @@
 # curl -H "Content-Type: application/json" http://localhost:8001/status  --trace-ascii /dev/stdout
 cd ./test
 docker-compose up --build &
-sleep 60
+echo "here1"
+sleep 240
+echo "here2"
 docker-compose  logs request > response.txt
 more response.txt
 docker-compose down
