@@ -17,7 +17,7 @@ Add your secure environmental values.
 
 Run the container
 
-    docker run -it --rm -p 8001:8000 kealan/server-demo:1.0.0
+    docker run -it --rm -p 8001:8000 kealan/server-demo:$(cat VERSION)
 
 Call the service
 
