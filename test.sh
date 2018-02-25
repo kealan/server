@@ -9,29 +9,33 @@
 
 # NOTES:
 
-#echo "make client request"
-# curl -H "Content-Type: application/json" http://localhost:8001/status  --trace-ascii /dev/stdout
 cd ./test
+
+# Change tag to latest version
+cp docker-compose.yml.tpl docker-compose.yml
+sed -i "s/tag/$VERSION/" docker-compose.yml
+
+# Start service and test
 docker-compose up --build &
-echo "here1"
 sleep 240
-echo "here2"
 docker-compose  logs request > response.txt
 more response.txt
 docker-compose down
+
+# Check logs
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
-    echo "TEST PASSED"
+    echo "TEST1 PASSED"
 else 
-    echo "TEST FAILED"
+    echo "TEST1 FAILED"
     exit 1
 fi
 
-grep "HTTP/1.1 200 KO" ./response.txt
+grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
-    echo "TEST PASSED"
+    echo "TEST2 PASSED"
 else 
-    echo "TEST FAILED"
+    echo "TEST2 FAILED"
     exit 1
 fi
 

@@ -9,14 +9,16 @@ jobs:
   include:
   - stage: build docker image
     script:
+    - export VERSION=$(cat VERSION)
     - make
     - docker login -u=$DOCKER_USERNAME -p=$DOCKER_PASSWORD
     - docker build -t server-demo .
     - docker images
-    - docker tag server-demo $DOCKER_USERNAME/server-demo:1.0.0
-    - docker push $DOCKER_USERNAME/server-demo:1.0.0
+    - docker tag server-demo $DOCKER_USERNAME/server-demo:$VERSION
+    - docker push $DOCKER_USERNAME/server-demo:$VERSION
   - stage: test
     script:
+    - export VERSION=$(cat VERSION)
     - docker-compose --version
     - ./test.sh
 env:
