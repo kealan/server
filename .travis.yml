@@ -13,8 +13,8 @@ jobs:
     - docker login -u=$DOCKER_USERNAME -p=$DOCKER_PASSWORD
     - docker build -t server-demo .
     - docker images
-    - docker tag server-demo $DOCKER_USERNAME/server-demo
-    - docker push $DOCKER_USERNAME/server-demo
+    - docker tag server-demo $DOCKER_USERNAME/server-demo:1.0.0
+    - docker push $DOCKER_USERNAME/server-demo:1.0.0
   - stage: test
     script:
     - docker-compose --version
