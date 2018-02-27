@@ -10,15 +10,17 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <time.h>
 
-#define PORT "8000"  // the port users will be connecting to
-
-#define BACKLOG 10	 // how many pending connections queue will hold
-
-#define MAXDATASIZE 1000 // max number of bytes we can get at once 
+#define PORT "8000"
+#define BACKLOG 10
+#define MAXPAYLOADSIZE 500
+#define MAXDATASIZE 1000
 
 void sigchld_handler(int s)
 {
+    (void)s; // quiet unused variable warning
+
     // waitpid() might overwrite errno, so we save and restore it:
     int saved_errno = errno;
 
@@ -26,7 +28,6 @@ void sigchld_handler(int s)
 
     errno = saved_errno;
 }
-
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -39,13 +40,15 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void doprocessing (int sock);
+void handler(int sock);
 
 int main()
 {
-    int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
+    // listen on sock_fd, new connection on new_fd
+    int sockfd, new_fd;
     struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_storage their_addr; // connector's address information
+    // connector's address information
+    struct sockaddr_storage their_addr;
     socklen_t sin_size;
     struct sigaction sa;
     int yes=1;
@@ -91,7 +94,7 @@ int main()
         break;
     }
 
-    freeaddrinfo(servinfo); // all done with this structure
+    freeaddrinfo(servinfo);
 
     if (p == NULL)
     {
@@ -116,7 +119,8 @@ int main()
 
     printf("server: waiting for connections...\n");
 
-    while(1)    // main accept() loop
+    // main accept() loop
+    while(1)
     {
         sin_size = sizeof their_addr;
         new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -131,10 +135,12 @@ int main()
                   s, sizeof s);
         printf("server: got connection from %s\n", s);
 
-        if (!fork())   // this is the child process
+        // this is the child process
+        if (!fork())
         {
-            close(sockfd); // child doesn't need the listener
-            doprocessing(new_fd);
+            // child doesn't need the listener
+            close(sockfd);
+            handler(new_fd);
             close(new_fd);
             exit(0);
         }
@@ -144,35 +150,78 @@ int main()
     return 0;
 }
 
-void doprocessing (int sock)
+
+
+void handler(int sock)
 {
-    int n1 = 1;
+    int n1 = 0;
     int n2 = 0;
     int len = 0;
     char* server ="test";
-    while (n1 > 0)
+    char* matchData;
+    char* matchStatus;
+    int dataLen=0;
+
+    // Get time
+    time_t now;
+    time(&now);
+    char* ctime_str = ctime(&now);
+
+    // Chomp line
+    int l = strlen(ctime_str) - 1;
+    ctime_str[l] = '\0';
+
+    // Max playload data to send
+    char data[MAXPAYLOADSIZE];
+    bzero(data,MAXPAYLOADSIZE);
+
+    // Max data to rece
+    char buf[MAXDATASIZE];
+    bzero(buf,MAXDATASIZE);
+    if( (n1 = recv(sock, buf, MAXDATASIZE, 0)) == -1)
     {
-        char buf[MAXDATASIZE];
-        bzero(buf,MAXDATASIZE);
-        if( (n1 = recv(sock, buf, MAXDATASIZE, 0)) == -1)
-        {
-            perror("recv failed");
-            close(sock);
-            exit(1);
-        }
-
-        printf("num bytes received %d\n", n1);
-        printf("server received %s\n", buf);
-
-        bzero(buf,MAXDATASIZE);
-        (void)sprintf(buf,"HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\nConnection: close\nContent-Type: application/json\n\n", server, len); /* Header + a blank line */
-
-        if ( (n2 = send(sock, buf, n1, 0)) == -1)
-        {
-            perror("send");
-            close(sock);
-            exit(1);
-        }
-        printf("num bytes sent %d\n", n2);
+        perror("recv failed");
+        close(sock);
+        exit(1);
     }
+
+    printf("num bytes received %d\n", n1);
+    printf("server received %s\n", buf);
+
+    // Strings to search for in received message
+    matchData = strstr (buf,"POST /data HTTP");
+    matchStatus = strstr (buf,"POST /status HTTP");
+    bzero(buf,MAXDATASIZE);
+
+    if (matchStatus)
+    {
+      dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\", \"version\": \"%s\"}\n",VERSION);
+      printf("%d %s\n", dataLen, data);
+      /* Header + a blank line + data*/
+      len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 200 OK\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
+      // (void)sprintf(buf,"HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\nConnection: close\nContent-Type: application/json\nDate: %s\n", server, len, ctime_str); /* Header + a blank line */
+    }
+    else if (matchData)
+    {
+      dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\", \"version\": \"%s\"}\n",VERSION);
+      printf("%d %s\n", dataLen, data);
+      /* Header + a blank line + data*/
+      len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 200 OK\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
+    }
+    else
+    {
+      dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Bad Request\", \"version\": \"%s\"}\n",VERSION);
+      printf("%d %s\n", dataLen, data);
+      /* Header + a blank line + data*/
+      len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 400 Bad Request\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
+    }
+
+    printf("%d %s\n", len,  buf);
+    if ( (n2 = send(sock, buf, len, 0)) == -1)
+    {
+        perror("send");
+        close(sock);
+        exit(1);
+    }
+    printf("num bytes sent %d\n", n2);
 }
