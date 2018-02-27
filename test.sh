@@ -9,6 +9,7 @@
 
 # NOTES:
 
+export VERSION=$(cat VERSION)
 cd ./test
 
 # Change tag in docker-compose file to latest version
