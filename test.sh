@@ -20,7 +20,6 @@ docker-compose up --build &
 sleep 300
 docker-compose ps 
 docker-compose logs request > log.txt
-more response.txt
 docker-compose down
 
 # Check log

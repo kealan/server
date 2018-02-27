@@ -10,9 +10,9 @@
 # NOTES:
 
 echo "make client request"
-sleep 300
-/usr/bin/curl -i -H "Content-Type: application/json" -X POST http://localhost:8001/status 
-/usr/bin/curl -i -H "Content-Type: application/json" -X POST http://localhost:8001/status > response.txt
+sleep 240
+
+/usr/bin/curl -i -H "Content-Type: application/json" -X POST http://server-demo:8001/status > response.txt
 more response.txt
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
@@ -21,7 +21,7 @@ else
     echo "TEST1 FAILED"
 fi
 
-/usr/bin/curl -i -H "Content-Type: application/json" -X POST -d '{"data": "testuser"}' http://localhost:8001/data > response.txt
+/usr/bin/curl -i -H "Content-Type: application/json" -X POST -d '{"data": "testuser"}' http://server-demo:8001/data > response.txt
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
     echo "TEST2 PASSED"
@@ -29,7 +29,7 @@ else
     echo "TEST2 FAILED"
 fi
 
-/usr/bin/curl -i -H "Content-Type: application/json" -X POST -d '{"data": "testuser"}' http://localhost:8001/baddata  > response.txt
+/usr/bin/curl -i -H "Content-Type: application/json" -X POST -d '{"data": "testuser"}' http://server-demo:8001/baddata  > response.txt
 grep "HTTP/1.1 400 Bad Request" ./response.txt
 if [ $? = 0 ]; then
     echo "TEST3 PASSED"
