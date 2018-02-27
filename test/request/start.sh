@@ -10,9 +10,10 @@
 # NOTES:
 
 echo "make client request"
-sleep 200
-
+sleep 300
+/usr/bin/curl -i -H "Content-Type: application/json" -X POST http://localhost:8001/status 
 /usr/bin/curl -i -H "Content-Type: application/json" -X POST http://localhost:8001/status > response.txt
+more response.txt
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
     echo "TEST1 PASSED"

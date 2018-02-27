@@ -17,8 +17,9 @@ sed -i "s/tag/$VERSION/" docker-compose.yml
 
 # Start service and test
 docker-compose up --build &
-sleep 240
-docker-compose  logs request > log.txt
+sleep 300
+docker-compose ps 
+docker-compose logs request > log.txt
 more response.txt
 docker-compose down
 
