@@ -17,6 +17,7 @@
 #define MAXPAYLOADSIZE 500
 #define MAXDATASIZE 1000
 #define MAXVALUESIZE 100
+#define MAXMESSAGESIZE 100
 
 void sigchld_handler(int s)
 {
@@ -43,7 +44,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 void handler(int sock);
 
-int parseData(char* buffer, char* dst, char* start, char* end);
+int parseData(char* buffer, char* dst, char* message, char* start);
 
 int main()
 {
@@ -154,6 +155,49 @@ int main()
 }
 
 
+int parseData(char* buffer, char* dst, char* message, char* start)
+{
+    printf("kmc11 \n");
+    char* end = "\"";
+    char* p1 = strstr(buffer,start);
+    printf("kmc11 p1 string %s \n", p1);
+
+    if (p1 == NULL)
+    {
+        sprintf(message,"Input value not found %s", start);
+        return 1;
+    }
+
+    char* p2 = strstr(p1,end);
+    printf("kmc11 p2 string %s \n", p2);
+    if (p2 == NULL)
+    {
+        sprintf(message,"Malformed input");
+        return 2;
+    }
+
+    int n = (int) (p2 - p1);
+    if (n<MAXVALUESIZE)
+    {
+        strncpy(dst,p1,n);
+        dst[n] = '\0';
+    }
+    else
+    {
+        sprintf(message,"n>MAXVALUESIZE n: %d MAXVALUESIZE %d\n", n, MAXVALUESIZE);
+        return 3;
+    }
+#ifdef DEBUG
+    printf("p1 %d \n", ((int) (p1 - buffer)));
+    printf("p2 %d \n", ((int) (p2 - buffer)));
+    printf("p2 - p1 %d \n", ((int) (p2 - p1)));
+    printf("p1 string %s \n", p1);
+    printf("p2 string %s \n", p2);
+    printf("dst %s \n", dst);
+#endif
+    return 0;
+}
+
 
 void handler(int sock)
 {
@@ -180,6 +224,10 @@ void handler(int sock)
     char value[MAXVALUESIZE];
     bzero(value,MAXVALUESIZE);
 
+    // Max message size
+    char message[MAXMESSAGESIZE];
+    bzero(message,MAXMESSAGESIZE);
+
     // Max playload data to send
     char data[MAXPAYLOADSIZE];
     bzero(data,MAXPAYLOADSIZE);
@@ -198,46 +246,25 @@ void handler(int sock)
     printf("server received %s\n", buf);
 #endif
 
-    // Strings to search for in received message
+    // Strings to search for in received data
     matchData = strstr (buf,"POST /data HTTP");
     matchStatus = strstr (buf,"POST /status HTTP");
 
     // Search buffer for data
     if (matchData)
     {
-        char* cmp1 = "{\"data1\": \"";
-        char* p1 = strstr(buf,cmp1);
-        if (p1 == NULL)
+        char* start = "data1";
+        printf("kmc1\n");
+        int rtn = parseData(buf, value, message, start);
+        printf("kmc2\n");
+        if (rtn)
         {
-            printf("Value not found %s\n", cmp1);
+            printf("Error code %d message %s\n", rtn, message);
             clientError=1;
         }
-        else
-        {
-            char* p1 = strstr(buf,cmp1);
-            p1=p1+strlen(cmp1);
-            char* cmp2 = "\": \"data2\": \"";
-            char* p2 = strstr(buf,cmp2);
-            int n = (int) (p2 - p1);
-            if (n<MAXVALUESIZE)
-            {
-                strncpy(value,p1,n);
-                value[n] = '\0';
-            }
-            else
-            {
-                printf("n>MAXVALUESIZE n: %d MAXVALUESIZE %d\n", n, MAXVALUESIZE);
-                clientError=1;
-            }
 #ifdef DEBUG
-            printf("p1 %d \n", ((int) (p1 - buf)));
-            printf("p2 %d \n", ((int) (p2 - buf)));
-            printf("p2 - p1 %d \n", ((int) (p2 - p1)));
-            printf("p1 string %s \n", p1);
-            printf("p2 string %s \n", p2);
-            printf("value %s \n", value);
+        printf("value %s \n", value);
 #endif
-        }
     }
 
     bzero(buf,MAXDATASIZE);
@@ -252,10 +279,11 @@ void handler(int sock)
     }
     else if (clientError)
     {
-        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Bad Request\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
+        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"%s\",\"service\": \"%s\", \"version\": \"%s\"}\n",message, SERVICE, VERSION);
         printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 400 Bad Request\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
+        clientError=0;
     }
     else if (matchStatus)
     {
