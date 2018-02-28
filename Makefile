@@ -7,6 +7,9 @@ CCOPTS=-static -Wall -Wextra
 # Project version
 VERSION=$(shell cat VERSION)
 
+# ServiceProject version
+SERVICE=SERVICE-TEST
+
 .PHONY: all clean format
 
 all: $(TARGETS)
@@ -19,4 +22,4 @@ clean:
 	rm -f $(TARGETS) *~
 
 %: %.c
-	$(CC) $(CCOPTS) -D VERSION="\"${VERSION}\"" -o $@ $<
+	$(CC) $(CCOPTS) -D DEBUG -D VERSION="\"${VERSION}\"" -D SERVICE="\"${SERVICE}\"" -o $@ $<
