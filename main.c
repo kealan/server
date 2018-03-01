@@ -52,7 +52,7 @@ int main()
     int sockfd, new_fd;
     struct addrinfo hints, *servinfo, *p;
     // connector's address information
-    struct sockaddr_storage their_addr;
+    struct sockaddr_storage client_addr;
     socklen_t sin_size;
     struct sigaction sa;
     int yes=1;
@@ -142,8 +142,8 @@ int main()
 
     while(1)
     {
-        sin_size = sizeof their_addr;
-        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+        sin_size = sizeof client_addr;
+        new_fd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
         if (new_fd == -1)
         {
             logger("INFO", "Accept error");
@@ -153,8 +153,8 @@ int main()
             continue;
         }
 
-        inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-        sprintf(message, "Connection %s", s);
+        inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr *)&client_addr), s, sizeof s);
+        sprintf(message, "Client IP Address %s", s);
         logger("INFO", message);
 
         // Child process
@@ -168,7 +168,6 @@ int main()
         }
         close(new_fd);  
     }
-
     return 0;
 }
 
@@ -223,7 +222,7 @@ void logger(char* tag, char* message)
     int l = strlen(ctime_str) - 1;
     ctime_str[l] = '\0';
 
-    (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%s\t%s", tag, ctime_str, SERVICE, message);
+    (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%d\t%s\t%s", tag, ctime_str, getpid(), SERVICE, message);
     printf("%s\n",buffer);
     fflush(stdout);
     fflush(stderr);
