@@ -1,7 +1,7 @@
 # Dockerfile
 #
 #
-# @author      Kealan McCusker <kealan.mccusker@miracl.com>
+# @author      Kealan McCusker <kealanmccusker@gmail.com>
 # -----------------------------------------------------------------------------
 
 FROM scratch

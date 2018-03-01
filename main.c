@@ -42,8 +42,8 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void logger(char* tag, char* message);
 void handler(int sock);
-
 int parseData(char* buffer, char* dst, char* message, char* start);
 
 int main()
@@ -59,15 +59,19 @@ int main()
     char s[INET6_ADDRSTRLEN];
     int rv;
 
+    // Max message size
+    char message[MAXMESSAGESIZE];
+    bzero(message,MAXMESSAGESIZE);
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE; // use my IP
+    hints.ai_flags = AI_PASSIVE;
 
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0)
     {
-        fprintf(stderr, "getaddrinfo: sss %s\n", gai_strerror(rv));
+        sprintf(message, "getaddrinfo: sss %s", gai_strerror(rv));
+        logger("ERROR", message);
         return 1;
     }
 
@@ -77,13 +81,17 @@ int main()
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
                              p->ai_protocol)) == -1)
         {
+            logger("INFO", "socket failed");
+#ifdef DEBUG
             perror("server: socket");
+#endif
             continue;
         }
 
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                        sizeof(int)) == -1)
         {
+            logger("ERROR", "setsockopt failed");
             perror("setsockopt");
             exit(1);
         }
@@ -91,7 +99,10 @@ int main()
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
             close(sockfd);
+            logger("INFO", "bind failed");
+#ifdef DEBUG
             perror("server: bind");
+#endif
             continue;
         }
 
@@ -102,13 +113,16 @@ int main()
 
     if (p == NULL)
     {
-        fprintf(stderr, "server: failed to bind\n");
+        logger("ERROR", "bind failed");
         exit(1);
     }
 
     if (listen(sockfd, BACKLOG) == -1)
     {
+        logger("ERROR", "lisen failed");
+#ifdef DEBUG
         perror("listen");
+#endif
         exit(1);
     }
 
@@ -117,38 +131,42 @@ int main()
     sa.sa_flags = SA_RESTART;
     if (sigaction(SIGCHLD, &sa, NULL) == -1)
     {
+        logger("ERROR", "signaction error");
+#ifdef DEBUG
         perror("sigaction");
+#endif
         exit(1);
     }
 
-    printf("server: waiting for connections...\n");
+    logger("INFO", "Starting server");
 
-    // main accept() loop
     while(1)
     {
         sin_size = sizeof their_addr;
         new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
         if (new_fd == -1)
         {
+            logger("INFO", "Accept error");
+#ifdef DEBUG
             perror("accept");
+#endif
             continue;
         }
 
-        inet_ntop(their_addr.ss_family,
-                  get_in_addr((struct sockaddr *)&their_addr),
-                  s, sizeof s);
-        printf("server: got connection from %s\n", s);
+        inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+        sprintf(message, "Connection %s", s);
+        logger("INFO", message);
 
-        // this is the child process
+        // Child process
         if (!fork())
         {
-            // child doesn't need the listener
+            // Close listener
             close(sockfd);
             handler(new_fd);
             close(new_fd);
             exit(0);
         }
-        close(new_fd);  // parent doesn't need this
+        close(new_fd);  
     }
 
     return 0;
@@ -161,16 +179,18 @@ int parseData(char* buffer, char* dst, char* message, char* start)
     char* p1 = strstr(buffer,start);
     if (p1 == NULL)
     {
-        sprintf(message,"Input value not found %s", start);
+        sprintf(message,"Input value not found");
+        logger("ERROR", message);
         return 1;
     }
 
-    p1 = p1 + strlen(start) + 4;
+    p1 = p1 + strlen(start) + 3;
     char* p2 = strstr(p1,end);
     if (p2 == NULL)
     {
         sprintf(message,"Malformed input");
-        return 2;
+        logger("ERROR", message);
+        return 1;
     }
 
     int n = (int) (p2 - p1);
@@ -182,17 +202,31 @@ int parseData(char* buffer, char* dst, char* message, char* start)
     else
     {
         sprintf(message,"Max value size exceded size:%d MAXVALUESIZE: %d\n", n, MAXVALUESIZE);
-        return 3;
+        logger("ERROR", message);
+        return 1;
     }
-#ifdef DEBUG
-    printf("p1 %d \n", ((int) (p1 - buffer)));
-    printf("p2 %d \n", ((int) (p2 - buffer)));
-    printf("p2 - p1 %d \n", ((int) (p2 - p1)));
-    printf("p1 string %s \n", p1);
-    printf("p2 string %s \n", p2);
-    printf("dst %s \n", dst);
-#endif
     return 0;
+}
+
+/* @brief log data */
+void logger(char* tag, char* message)
+{
+    char buffer[MAXDATASIZE];
+    bzero(buffer,MAXDATASIZE);
+
+    // Get time
+    time_t now;
+    time(&now);
+    char* ctime_str = ctime(&now);
+
+    // Chomp line
+    int l = strlen(ctime_str) - 1;
+    ctime_str[l] = '\0';
+
+    (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%s\t%s", tag, ctime_str, SERVICE, message);
+    printf("%s\n",buffer);
+    fflush(stdout);
+    fflush(stderr);
 }
 
 
@@ -254,19 +288,17 @@ void handler(int sock)
     // Search buffer for data
     if (matchData)
     {
-        char* start = "user";
+        char* start = "\"user\"";
         int rtn = parseData(buf, value1, message, start);
         if (rtn)
         {
-            printf("Error code %d message %s\n", rtn, message);
             clientError=1;
         }
 
-        char* start2 = "email";
+        char* start2 = "\"email\"";
         rtn = parseData(buf, value2, message, start2);
         if (rtn)
         {
-            printf("Error code %d message %s\n", rtn, message);
             clientError=1;
         }
 #ifdef DEBUG
