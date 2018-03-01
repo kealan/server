@@ -157,19 +157,16 @@ int main()
 
 int parseData(char* buffer, char* dst, char* message, char* start)
 {
-    printf("kmc11 \n");
     char* end = "\"";
     char* p1 = strstr(buffer,start);
-    printf("kmc11 p1 string %s \n", p1);
-
     if (p1 == NULL)
     {
         sprintf(message,"Input value not found %s", start);
         return 1;
     }
 
+    p1 = p1 + strlen(start) + 4;
     char* p2 = strstr(p1,end);
-    printf("kmc11 p2 string %s \n", p2);
     if (p2 == NULL)
     {
         sprintf(message,"Malformed input");
@@ -184,7 +181,7 @@ int parseData(char* buffer, char* dst, char* message, char* start)
     }
     else
     {
-        sprintf(message,"n>MAXVALUESIZE n: %d MAXVALUESIZE %d\n", n, MAXVALUESIZE);
+        sprintf(message,"Max value size exceded size:%d MAXVALUESIZE: %d\n", n, MAXVALUESIZE);
         return 3;
     }
 #ifdef DEBUG
@@ -220,9 +217,13 @@ void handler(int sock)
     int l = strlen(ctime_str) - 1;
     ctime_str[l] = '\0';
 
-    // Max Value size
-    char value[MAXVALUESIZE];
-    bzero(value,MAXVALUESIZE);
+    // Max Value1 size
+    char value1[MAXVALUESIZE];
+    bzero(value1,MAXVALUESIZE);
+
+    // Max Value2 size
+    char value2[MAXVALUESIZE];
+    bzero(value2,MAXVALUESIZE);
 
     // Max message size
     char message[MAXMESSAGESIZE];
@@ -253,17 +254,24 @@ void handler(int sock)
     // Search buffer for data
     if (matchData)
     {
-        char* start = "data1";
-        printf("kmc1\n");
-        int rtn = parseData(buf, value, message, start);
-        printf("kmc2\n");
+        char* start = "user";
+        int rtn = parseData(buf, value1, message, start);
+        if (rtn)
+        {
+            printf("Error code %d message %s\n", rtn, message);
+            clientError=1;
+        }
+
+        char* start2 = "email";
+        rtn = parseData(buf, value2, message, start2);
         if (rtn)
         {
             printf("Error code %d message %s\n", rtn, message);
             clientError=1;
         }
 #ifdef DEBUG
-        printf("value %s \n", value);
+        printf("value1 %s \n", value1);
+        printf("value2 %s \n", value2);
 #endif
     }
 
@@ -294,7 +302,7 @@ void handler(int sock)
     }
     else if (matchData)
     {
-        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
+        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\",\"user\": \"%s\",\"email\": \"%s\",\"service\": \"%s\", \"version\": \"%s\"}\n",value1,value2,SERVICE, VERSION);
         printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 200 OK\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);

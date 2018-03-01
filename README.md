@@ -17,10 +17,11 @@ Add your secure environmental values.
 
 Run the container
 
-    docker run -it --rm -p 8001:8000 kealan/server-demo:$(cat VERSION)
+    docker run -it --rm -p 8000:8000 kealan/server-demo:$(cat VERSION)
 
 Call the service
 
-    curl -i -H "Content-Type: application/json" -X POST http://localhost:8000/status --trace-ascii /dev/stdout 
-    curl -i -H "Content-Type: application/json" -X POST -d '{"data1": "testuser": "data2": "testdata"}' http://localhost:8000/data --trace-ascii /dev/stdout 
-    curl -i -H "Content-Type: application/json" -X POST -d '{"data": "testuser"}' http://localhost:8000/baddata --trace-ascii /dev/stdout 
+    curl -i -H "Content-Type: application/json" -X POST http://localhost:8000/status --trace-ascii /dev/stdout --trace-ascii /dev/stdout 
+    curl -i -H "Content-Type: application/json" -X POST -d '{"user": "bob": "email": "bob@example.com"}' http://localhost:8000/data --trace-ascii /dev/stdout 
+    curl -i -H "Content-Type: application/json" -X POST -d '{"user": "bob": "email": "bob@example.com"}' http://localhost:8000/unknown --trace-ascii /dev/stdout 
+
