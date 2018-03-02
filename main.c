@@ -19,17 +19,7 @@
 #define MAXVALUESIZE 100
 #define MAXMESSAGESIZE 100
 
-void sigchld_handler(int s)
-{
-    (void)s; // quiet unused variable warning
-
-    // waitpid() might overwrite errno, so we save and restore it:
-    int saved_errno = errno;
-
-    while(waitpid(-1, NULL, WNOHANG) > 0);
-
-    errno = saved_errno;
-}
+const char* server="server-name";
 
 void logger(char* tag, char* message);
 void handler(int sock);
@@ -43,7 +33,6 @@ int main()
     // connector's address information
     struct sockaddr_storage client_addr;
     socklen_t sin_size;
-    struct sigaction sa;
     int yes=1;
     char s[INET6_ADDRSTRLEN];
     int rv;
@@ -115,16 +104,14 @@ int main()
         exit(1);
     }
 
-    sa.sa_handler = sigchld_handler; // reap all dead processes
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1)
+    // Set SIGCHLD handler to SIG_IGN which causes processes to be reaped automatically:
+    if (signal(SIGCHLD, SIG_IGN) == SIG_ERR)
     {
         logger("ERROR", "signaction error");
 #ifdef DEBUG
-        perror("sigaction");
+        perror("accept");
 #endif
-        exit(1);
+        // exit(1);
     }
 
     logger("INFO", "Starting server");
@@ -155,7 +142,7 @@ int main()
             close(new_fd);
             exit(0);
         }
-        close(new_fd);  
+        close(new_fd);
     }
     return 0;
 }
@@ -193,6 +180,9 @@ int parseData(char* buffer, char* dst, char* message, char* start)
         logger("ERROR", message);
         return 1;
     }
+#ifdef DEBUG
+    logger("DEBUG", dst);
+#endif
     return 0;
 }
 
@@ -223,7 +213,6 @@ void handler(int sock)
     int n1 = 0;
     int n2 = 0;
     int len = 0;
-    char* server ="test";
     char* matchData;
     char* matchStatus;
     int dataLen=0;
@@ -260,14 +249,20 @@ void handler(int sock)
     bzero(buf,MAXDATASIZE);
     if( (n1 = recv(sock, buf, MAXDATASIZE, 0)) == -1)
     {
+        logger("ERROR", "Receive failure");
         perror("recv failed");
         serverError=1;
     }
 
 #ifdef DEBUG
-    printf("num bytes received %d\n", n1);
-    printf("server received %s\n", buf);
+    sprintf(message, "nBytes recv: %d data recv: %s", n1, buf);
+    logger("DEBUG", message);
+    bzero(message,MAXMESSAGESIZE);
 #endif
+
+    char* pData = strstr(buf,"user");
+    pData=pData-2;;
+    logger("INFO", pData);
 
     // Strings to search for in received data
     matchData = strstr (buf,"POST /data HTTP");
@@ -289,18 +284,14 @@ void handler(int sock)
         {
             clientError=1;
         }
-#ifdef DEBUG
-        printf("value1 %s \n", value1);
-        printf("value2 %s \n", value2);
-#endif
     }
 
     bzero(buf,MAXDATASIZE);
+    //printf("INFO kmc x%s\n", buf);
 
     if (serverError)
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Internal Server Error\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 500 Internal Server Error\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
         serverError=0;
@@ -316,21 +307,18 @@ void handler(int sock)
     else if (matchStatus)
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 200 OK\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
     }
     else if (matchData)
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"OK\",\"user\": \"%s\",\"email\": \"%s\",\"service\": \"%s\", \"version\": \"%s\"}\n",value1,value2,SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 200 OK\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
     }
     else
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Bad Request\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 400 Bad Request\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
     }
@@ -339,22 +327,29 @@ void handler(int sock)
     // Send data
     if ((n2 = send(sock, buf, len, 0)) == -1)
     {
+        logger("ERROR", "Sending data failed. Retrying with error message");
         perror("send");
         serverError=1;
     }
 
     if (serverError)
     {
-        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Internal Server Error\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
+        dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Internal Server Error\",\"service\": \"%s\", \"version\": \"%s\"}",SERVICE, VERSION);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 500 Internal Server Error\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
         serverError=0;
-    }
 
-    if ((n2 = send(sock, buf, len, 0)) == -1)
-    {
-        perror("send");
+
+        if ((n2 = send(sock, buf, len, 0)) == -1)
+        {
+            logger("ERROR", "Sending data retry failed");
+            perror("send");
+        }
     }
-    printf("num bytes sent %d\n", n2);
+    logger("INFO", data);
+#ifdef DEBUG
+    sprintf(message, "nBytes sent: %d data sent: %s", n2, buf);
+    logger("DEBUG", message);
+    bzero(message,MAXMESSAGESIZE);
+#endif
 }
