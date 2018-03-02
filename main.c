@@ -23,7 +23,7 @@ const char* server="server-name";
 
 void logger(char* tag, char* message, char* client_ip);
 void handler(int sock, char* client_ip);
-int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start);
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end);
 
 int main()
 {
@@ -144,9 +144,8 @@ int main()
 }
 
 
-int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start)
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end)
 {
-    char* end = "\"";
     char* p1 = strstr(buffer,start);
     if (p1 == NULL)
     {
@@ -277,14 +276,15 @@ void handler(int sock, char* client_ip)
     if (matchData)
     {
         char* start = "\"user\"";
-        int rtn = parseData(buf, client_ip, value1, message, start);
+        char* end = "\"";
+        int rtn = parseData(buf, client_ip, value1, message, start, end);
         if (rtn)
         {
             clientError=1;
         }
 
         char* start2 = "\"email\"";
-        rtn = parseData(buf, client_ip, value2, message, start2);
+        rtn = parseData(buf, client_ip, value2, message, start2, end);
         if (rtn)
         {
             clientError=1;
