@@ -31,17 +31,6 @@ void sigchld_handler(int s)
     errno = saved_errno;
 }
 
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET)
-    {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
-
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
 void logger(char* tag, char* message);
 void handler(int sock);
 int parseData(char* buffer, char* dst, char* message, char* start);
@@ -153,7 +142,7 @@ int main()
             continue;
         }
 
-        inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr *)&client_addr), s, sizeof s);
+        inet_ntop(client_addr.ss_family, &(((struct sockaddr_in*)&client_addr)->sin_addr), s, sizeof s);
         sprintf(message, "Client IP Address %s", s);
         logger("INFO", message);
 
