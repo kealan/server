@@ -23,7 +23,7 @@ const char* server="server-name";
 
 void logger(char* tag, char* message, char* client_ip);
 void handler(int sock, char* client_ip);
-int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end);
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end, int offset);
 
 int main()
 {
@@ -144,7 +144,7 @@ int main()
 }
 
 
-int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end)
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start, char* end, int offset)
 {
     char* p1 = strstr(buffer,start);
     if (p1 == NULL)
@@ -154,7 +154,7 @@ int parseData(char* buffer, char* client_ip, char* dst, char* message, char* sta
         return 1;
     }
 
-    p1 = p1 + strlen(start) + 3;
+    p1 = p1 + strlen(start) + offset;
     char* p2 = strstr(p1,end);
     if (p2 == NULL)
     {
@@ -212,9 +212,10 @@ void logger(char* tag, char* message, char* client_ip)
 
 void handler(int sock, char* client_ip)
 {
-    int n1 = 0;
-    int n2 = 0;
-    int len = 0;
+    int n1=0;
+    int n2=0;
+    int len=0;
+    int rtn=0;
     char* matchData;
     char* matchStatus;
     int dataLen=0;
@@ -237,6 +238,10 @@ void handler(int sock, char* client_ip)
     // Max Value2 size
     char value2[MAXVALUESIZE];
     bzero(value2,MAXVALUESIZE);
+
+    // Max URI size
+    char uri[MAXVALUESIZE];
+    bzero(uri,MAXVALUESIZE);
 
     // Max message size
     char message[MAXMESSAGESIZE];
@@ -262,29 +267,39 @@ void handler(int sock, char* client_ip)
     bzero(message,MAXMESSAGESIZE);
 #endif
 
+    // Get URI
+    rtn = parseData(buf, client_ip, uri, message, "/", " HTTP/1.1", -1);
+    if (rtn)
+    {
+        clientError=1;
+    }
+
+    // Get data payload
     char* pData = strstr(buf,"{");
     if (pData)
     {
-      logger("INFO", pData, client_ip);
+        sprintf(message, "%s\t%s", uri, pData);
+        logger("INFO", message, client_ip);
     }
 
-    // Strings to search for in received data
+    // Support endpoints
     matchData = strstr (buf,"POST /data HTTP");
     matchStatus = strstr (buf,"GET /status HTTP");
+
 
     // Search buffer for data
     if (matchData)
     {
         char* start = "\"user\"";
         char* end = "\"";
-        int rtn = parseData(buf, client_ip, value1, message, start, end);
+        rtn = parseData(buf, client_ip, value1, message, start, end, 3);
         if (rtn)
         {
             clientError=1;
         }
 
         char* start2 = "\"email\"";
-        rtn = parseData(buf, client_ip, value2, message, start2, end);
+        rtn = parseData(buf, client_ip, value2, message, start2, end, 3);
         if (rtn)
         {
             clientError=1;
@@ -292,8 +307,8 @@ void handler(int sock, char* client_ip)
     }
 
 
+    // Return data
     bzero(buf,MAXDATASIZE);
-
     if (serverError)
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"Internal Server Error\",\"service\": \"%s\", \"version\": \"%s\"}\n",SERVICE, VERSION);
@@ -331,7 +346,8 @@ void handler(int sock, char* client_ip)
     // Send data
     if ((n2 = send(sock, buf, len, 0)) == -1)
     {
-        logger("ERROR", client_ip, "Sending data failed. Retrying with error message");
+        sprintf(message, "%s\tSending data failed. Retrying with error message", uri);
+        logger("ERROR", message, client_ip);
         perror("send");
         serverError=1;
     }
@@ -346,13 +362,15 @@ void handler(int sock, char* client_ip)
 
         if ((n2 = send(sock, buf, len, 0)) == -1)
         {
-            logger("ERROR", "Sending data retry failed", client_ip);
+            sprintf(message, "%s\tSending data retry failed", uri);
+            logger("ERROR", message, client_ip);
             perror("send");
         }
     }
-    logger("INFO", data, client_ip);
+    sprintf(message, "%s\t%s", uri, data);
+    logger("INFO", message, client_ip);
 #ifdef DEBUG
-    sprintf(message, "nBytes sent: %d data sent: %s", n2, buf);
+    sprintf(message, "%s\tnBytes sent: %d data sent: %s",uri, n2, buf);
     logger("DEBUG", message, client_ip);
     bzero(message,MAXMESSAGESIZE);
 #endif

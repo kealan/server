@@ -23,3 +23,6 @@ clean:
 
 %: %.c
 	$(CC) $(CCOPTS) -D VERSION="\"${VERSION}\"" -D SERVICE="\"${SERVICE}\"" -o $@ $<
+
+kill:
+	killall -q main || true
