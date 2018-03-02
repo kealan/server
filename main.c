@@ -21,9 +21,9 @@
 
 const char* server="server-name";
 
-void logger(char* tag, char* message);
-void handler(int sock);
-int parseData(char* buffer, char* dst, char* message, char* start);
+void logger(char* tag, char* message, char* client_ip);
+void handler(int sock, char* client_ip);
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start);
 
 int main()
 {
@@ -34,7 +34,7 @@ int main()
     struct sockaddr_storage client_addr;
     socklen_t sin_size;
     int yes=1;
-    char s[INET6_ADDRSTRLEN];
+    char client_ip[INET6_ADDRSTRLEN];
     int rv;
 
     // Max message size
@@ -49,7 +49,7 @@ int main()
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0)
     {
         sprintf(message, "getaddrinfo: sss %s", gai_strerror(rv));
-        logger("ERROR", message);
+        logger("ERROR", message, NULL);
         return 1;
     }
 
@@ -59,7 +59,7 @@ int main()
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
                              p->ai_protocol)) == -1)
         {
-            logger("INFO", "socket failed");
+            logger("INFO", "socket failed", NULL);
 #ifdef DEBUG
             perror("server: socket");
 #endif
@@ -69,7 +69,7 @@ int main()
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
                        sizeof(int)) == -1)
         {
-            logger("ERROR", "setsockopt failed");
+            logger("ERROR", "setsockopt failed", NULL);
             perror("setsockopt");
             exit(1);
         }
@@ -77,7 +77,7 @@ int main()
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
             close(sockfd);
-            logger("INFO", "bind failed");
+            logger("INFO", "bind: Address already in use", NULL);
 #ifdef DEBUG
             perror("server: bind");
 #endif
@@ -91,13 +91,13 @@ int main()
 
     if (p == NULL)
     {
-        logger("ERROR", "bind failed");
+        logger("ERROR", "bind failed", NULL);
         exit(1);
     }
 
     if (listen(sockfd, BACKLOG) == -1)
     {
-        logger("ERROR", "lisen failed");
+        logger("ERROR", "lisen failed", NULL);
 #ifdef DEBUG
         perror("listen");
 #endif
@@ -107,14 +107,14 @@ int main()
     // Set SIGCHLD handler to SIG_IGN which causes processes to be reaped automatically:
     if (signal(SIGCHLD, SIG_IGN) == SIG_ERR)
     {
-        logger("ERROR", "signaction error");
+        logger("ERROR", "signaction error", NULL);
 #ifdef DEBUG
         perror("accept");
 #endif
         // exit(1);
     }
 
-    logger("INFO", "Starting server");
+    logger("INFO", "Starting server", NULL);
 
     while(1)
     {
@@ -122,23 +122,19 @@ int main()
         new_fd = accept(sockfd, (struct sockaddr *)&client_addr, &sin_size);
         if (new_fd == -1)
         {
-            logger("INFO", "Accept error");
+            logger("INFO", "Accept error", NULL);
 #ifdef DEBUG
             perror("accept");
 #endif
             continue;
         }
 
-        inet_ntop(client_addr.ss_family, &(((struct sockaddr_in*)&client_addr)->sin_addr), s, sizeof s);
-        sprintf(message, "Client IP Address %s", s);
-        logger("INFO", message);
-
-        // Child process
+        inet_ntop(client_addr.ss_family, &(((struct sockaddr_in*)&client_addr)->sin_addr), client_ip, sizeof client_ip);
         if (!fork())
         {
             // Close listener
             close(sockfd);
-            handler(new_fd);
+            handler(new_fd, client_ip);
             close(new_fd);
             exit(0);
         }
@@ -148,14 +144,14 @@ int main()
 }
 
 
-int parseData(char* buffer, char* dst, char* message, char* start)
+int parseData(char* buffer, char* client_ip, char* dst, char* message, char* start)
 {
     char* end = "\"";
     char* p1 = strstr(buffer,start);
     if (p1 == NULL)
     {
         sprintf(message,"Input value not found");
-        logger("ERROR", message);
+        logger("ERROR", message, client_ip);
         return 1;
     }
 
@@ -164,7 +160,7 @@ int parseData(char* buffer, char* dst, char* message, char* start)
     if (p2 == NULL)
     {
         sprintf(message,"Malformed input");
-        logger("ERROR", message);
+        logger("ERROR", message, client_ip);
         return 1;
     }
 
@@ -177,17 +173,17 @@ int parseData(char* buffer, char* dst, char* message, char* start)
     else
     {
         sprintf(message,"Max value size exceded size:%d MAXVALUESIZE: %d\n", n, MAXVALUESIZE);
-        logger("ERROR", message);
+        logger("ERROR", message, client_ip);
         return 1;
     }
 #ifdef DEBUG
-    logger("DEBUG", dst);
+    logger("DEBUG", dst, client_ip);
 #endif
     return 0;
 }
 
 /* @brief log data */
-void logger(char* tag, char* message)
+void logger(char* tag, char* message, char* client_ip)
 {
     char buffer[MAXDATASIZE];
     bzero(buffer,MAXDATASIZE);
@@ -201,14 +197,21 @@ void logger(char* tag, char* message)
     int l = strlen(ctime_str) - 1;
     ctime_str[l] = '\0';
 
-    (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%d\t%s\t%s", tag, ctime_str, getpid(), SERVICE, message);
+    if (client_ip)
+    {
+        (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%s\t%d\t%s\t%s", tag, ctime_str, SERVICE, getpid(), client_ip, message);
+    }
+    else
+    {
+        (void)snprintf(buffer,MAXDATASIZE,"[%s]\t%s\t%s\t%d\t%s", tag, ctime_str, SERVICE, getpid(), message);
+    }
+
     printf("%s\n",buffer);
     fflush(stdout);
-    fflush(stderr);
 }
 
 
-void handler(int sock)
+void handler(int sock, char* client_ip)
 {
     int n1 = 0;
     int n2 = 0;
@@ -249,45 +252,47 @@ void handler(int sock)
     bzero(buf,MAXDATASIZE);
     if( (n1 = recv(sock, buf, MAXDATASIZE, 0)) == -1)
     {
-        logger("ERROR", "Receive failure");
+        logger("ERROR", client_ip, "Receive failure");
         perror("recv failed");
         serverError=1;
     }
 
 #ifdef DEBUG
     sprintf(message, "nBytes recv: %d data recv: %s", n1, buf);
-    logger("DEBUG", message);
+    logger("DEBUG", message, client_ip);
     bzero(message,MAXMESSAGESIZE);
 #endif
 
-    char* pData = strstr(buf,"user");
-    pData=pData-2;;
-    logger("INFO", pData);
+    char* pData = strstr(buf,"{");
+    if (pData)
+    {
+      logger("INFO", pData, client_ip);
+    }
 
     // Strings to search for in received data
     matchData = strstr (buf,"POST /data HTTP");
-    matchStatus = strstr (buf,"POST /status HTTP");
+    matchStatus = strstr (buf,"GET /status HTTP");
 
     // Search buffer for data
     if (matchData)
     {
         char* start = "\"user\"";
-        int rtn = parseData(buf, value1, message, start);
+        int rtn = parseData(buf, client_ip, value1, message, start);
         if (rtn)
         {
             clientError=1;
         }
 
         char* start2 = "\"email\"";
-        rtn = parseData(buf, value2, message, start2);
+        rtn = parseData(buf, client_ip, value2, message, start2);
         if (rtn)
         {
             clientError=1;
         }
     }
 
+
     bzero(buf,MAXDATASIZE);
-    //printf("INFO kmc x%s\n", buf);
 
     if (serverError)
     {
@@ -299,7 +304,6 @@ void handler(int sock)
     else if (clientError)
     {
         dataLen = snprintf(data,MAXPAYLOADSIZE,"{\"message\": \"%s\",\"service\": \"%s\", \"version\": \"%s\"}\n",message, SERVICE, VERSION);
-        printf("%d %s\n", dataLen, data);
         /* Header + a blank line + data*/
         len = snprintf(buf,MAXDATASIZE,"HTTP/1.1 400 Bad Request\nContent-Type: application/json\nContent-Length: %d\nServer: %s\nDate: %s\n\n%s", dataLen, server, ctime_str, data);
         clientError=0;
@@ -327,7 +331,7 @@ void handler(int sock)
     // Send data
     if ((n2 = send(sock, buf, len, 0)) == -1)
     {
-        logger("ERROR", "Sending data failed. Retrying with error message");
+        logger("ERROR", client_ip, "Sending data failed. Retrying with error message");
         perror("send");
         serverError=1;
     }
@@ -342,14 +346,14 @@ void handler(int sock)
 
         if ((n2 = send(sock, buf, len, 0)) == -1)
         {
-            logger("ERROR", "Sending data retry failed");
+            logger("ERROR", "Sending data retry failed", client_ip);
             perror("send");
         }
     }
-    logger("INFO", data);
+    logger("INFO", data, client_ip);
 #ifdef DEBUG
     sprintf(message, "nBytes sent: %d data sent: %s", n2, buf);
-    logger("DEBUG", message);
+    logger("DEBUG", message, client_ip);
     bzero(message,MAXMESSAGESIZE);
 #endif
 }

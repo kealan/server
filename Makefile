@@ -22,4 +22,4 @@ clean:
 	rm -f $(TARGETS) *~
 
 %: %.c
-	$(CC) $(CCOPTS) -D DEBUG -D VERSION="\"${VERSION}\"" -D SERVICE="\"${SERVICE}\"" -o $@ $<
+	$(CC) $(CCOPTS) -D VERSION="\"${VERSION}\"" -D SERVICE="\"${SERVICE}\"" -o $@ $<

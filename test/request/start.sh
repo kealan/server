@@ -12,7 +12,7 @@
 echo "Start test"
 sleep 240
 
-/usr/bin/curl -i -H "Content-Type: application/json" -X POST http://server-demo:8000/status > response.txt
+/usr/bin/curl -i -H "Content-Type: application/json" http://server-demo:8000/status > response.txt
 grep "HTTP/1.1 200 OK" ./response.txt
 if [ $? = 0 ]; then
     echo "TEST1 PASSED"

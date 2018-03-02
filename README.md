@@ -21,7 +21,7 @@ Run the container
 
 Call the service
 
-    curl -i -H "Content-Type: application/json" -X POST http://localhost:8000/status --trace-ascii /dev/stdout --trace-ascii /dev/stdout 
+    curl -i -H "Content-Type: application/json" http://localhost:8000/status --trace-ascii /dev/stdout --trace-ascii /dev/stdout 
     curl -i -H "Content-Type: application/json" -X POST -d '{"user": "bob": "email": "bob@example.com"}' http://localhost:8000/data --trace-ascii /dev/stdout 
     curl -i -H "Content-Type: application/json" -X POST -d '{"user": "bob": "email": "bob@example.com"}' http://localhost:8000/unknown --trace-ascii /dev/stdout 
 
